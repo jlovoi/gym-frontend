@@ -1,0 +1,197 @@
+import { useSignUp } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+export default function SignUp() {
+  const { signUp, setActive, isLoaded } = useSignUp();
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [step, setStep] = useState<"credentials" | "verify">("credentials");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSignUp() {
+    if (!isLoaded) return;
+    setError("");
+    setLoading(true);
+    try {
+      await signUp.create({ emailAddress: email, password });
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+      setStep("verify");
+    } catch (err: any) {
+      setError(err.errors?.[0]?.message ?? "Sign up failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerify() {
+    if (!isLoaded) return;
+    setError("");
+    setLoading(true);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code });
+      await setActive({ session: result.createdSessionId });
+      router.replace("/(app)");
+    } catch (err: any) {
+      setError(err.errors?.[0]?.message ?? "Verification failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={styles.inner}>
+        {step === "credentials" ? (
+          <>
+            <Text style={styles.title}>Create account</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#888"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#888"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleSignUp}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Continue</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => router.replace("/sign-in")}>
+              <Text style={styles.link}>Already have an account? Sign in</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.title}>Check your email</Text>
+            <Text style={styles.subtitle}>
+              We sent a verification code to {email}
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Verification code"
+              placeholderTextColor="#888"
+              keyboardType="number-pad"
+              value={code}
+              onChangeText={setCode}
+              autoFocus
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleVerify}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Verify email</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setStep("credentials")}>
+              <Text style={styles.link}>Go back</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  inner: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    gap: 12,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 4,
+    color: "#111",
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "#555",
+    marginBottom: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: "#111",
+  },
+  error: {
+    color: "#e53e3e",
+    fontSize: 14,
+  },
+  button: {
+    backgroundColor: "#111",
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  link: {
+    color: "#555",
+    fontSize: 14,
+    textAlign: "center",
+    marginTop: 4,
+  },
+});
