@@ -16,6 +16,8 @@ export default function SignUp() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const router = useRouter();
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -28,7 +30,7 @@ export default function SignUp() {
     setError("");
     setLoading(true);
     try {
-      await signUp.create({ emailAddress: email, password });
+      await signUp.create({ emailAddress: email, password, firstName, lastName });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setStep("verify");
     } catch (err: any) {
@@ -45,6 +47,16 @@ export default function SignUp() {
     try {
       const result = await signUp.attemptEmailAddressVerification({ code });
       await setActive({ session: result.createdSessionId });
+      await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clerkId: result.createdUserId,
+          firstName,
+          lastName,
+          email,
+        }),
+      });
       router.replace("/(app)");
     } catch (err: any) {
       setError(err.errors?.[0]?.message ?? "Verification failed. Please try again.");
@@ -62,6 +74,24 @@ export default function SignUp() {
         {step === "credentials" ? (
           <>
             <Text style={styles.title}>Create account</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="First name"
+              placeholderTextColor="#888"
+              autoCapitalize="words"
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Last name"
+              placeholderTextColor="#888"
+              autoCapitalize="words"
+              value={lastName}
+              onChangeText={setLastName}
+            />
 
             <TextInput
               style={styles.input}
